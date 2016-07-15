@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>MDN by RobRomijnders</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>MDN</h1>
+        <p>LSTM + MDN for basketball trajectories</p>
+
+        <p class="view"><a href="https://github.com/RobRomijnders/MDN">View the Project on GitHub <small>RobRomijnders/MDN</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/RobRomijnders/MDN/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/MDN/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/MDN">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="mixture-density-network" class="anchor" href="#mixture-density-network" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Mixture Density Network</h1>
+
+<p>This post implements a LSTM for sequence labelling. Inspired after Graves' handwriting work, we next implement such LSTM with MDN
+to model and generate new sequences.</p>
+
+<p>For this post, I worked together with Rajiv Shah (link). Rajiv and I met on Github discussing LSTM's. How would LSTM's do on basketball
+trajectories, was out topic of discussion. LSTM's are popular from NLP, where they map sequences of word vectors onto other
+sequencs of word vectors, or map onto a single label. Recently, LSTM's were also used in speech to map sequences of MFCC onto labels
+or video frams onto labels. The question we pondered was, how would the LSTM map sequences of coordinates onto labels. Coordinates, in
+our case, are the X,Y,Z and time coordinate of three-points shots. So more specifically 
+<strong>Can the LSTM map sequences of coordinates onto a label, predicting a succesful three pointer?</strong></p>
+
+<p>The answer is yes. This post explains how we did it.</p>
+
+<p>First we discuss the LSTM, the experiments involved and the results. Second, we take Graves' handwriting work to a new level
+and implement it for our basketbal trajectories. We show that a MDN both models a trajectory well and that we can sample from
+the consequetive distributions.</p>
+
+<h1>
+<a id="model" class="anchor" href="#model" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Model</h1>
+
+<p>LSTM's map sequences onto other sequences. Hochreiter and Schmidhuber introduced them first in their paper. Later variants
+add the forget gate and peepholes. 
+A typical set of equations goes like this.</p>
+
+<p>The input vector, x, is four-dimensional in our case. The hidden state, h, get propagated between time steps. This hidden state maps
+to an output distribution. The softmax squashes the real valued numbers to a probability distribution. This we can train via cross-entropy error.</p>
+
+<h1>
+<a id="technical-details" class="anchor" href="#technical-details" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Technical details</h1>
+
+<p>LSTM's in Tensorflow come in two flavours. Some implementations treat the sequence, x, as a list. This list feeds into the seq2seq.rnn_decoder().
+This implementation, however, passes the sequences, x, as a 3D Tensor. All input tensors are shaped [batch_size, num_coordinates, sequence_length]</p>
+
+<h1>
+<a id="data" class="anchor" href="#data" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data</h1>
+
+<p>The basketbal trajectories originate from the SportVU data. SportVU systems track the coordinates of all 10 players and the ball, during the NBA games.
+First, we extract only three pointers from this dataset. For this step, all trajectories where the ball is higher than 8 feet qualify as three-pointer.
+The dataloader() improves this extraction process, which we named <strong>munging</strong>. The munging function extracts an interesting dataset from the large dataset.
+For example, we experimented with three pointers that are at least 11 feet and higher, stopped tracking at 4 feet from the basket and were 26 time-steps long. 
+That works with the following lines of code
+<code>
+dl.munge_data(11,26,4)
+</code></p>
+
+<h1>
+<a id="experiments-and-results" class="anchor" href="#experiments-and-results" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Experiments and results</h1>
+
+<p>-have to write something here-</p>
+
+<h1>
+<a id="mixture-density-network-1" class="anchor" href="#mixture-density-network-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Mixture Density Network</h1>
+
+<p>During the project, we wondered if the LSTM really learned from the trajectory. How could we ascertain that the LSTM understood the trajectory, rather than using only
+the final two time steps. That got us to Graves' handwriting work. Graves' models strokes of handwriting with a Mixture Density Network (MDN). At every coordinate, the LSTM
+generates a distributution for the offset to the next coorinate. At one timestep, you;re at coordinate (1,1), next at (2,2). Now <strong>probably</strong> the next coordinate is (3,3). 
+However, it could also be (3.1,3) or (2.9,2.8). How would we discern between those cases?</p>
+
+<p>We parametrize a <strong>distribution</strong> over the paper. This distribution represents how likely the next stroke will be at that coordinate. An example is this figure:
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/blog_example_MDN.png?raw=true" alt="example MDN">
+This is a downward part of the trajectory. The ball <em>very probably</em> will move 0.4feet forward and 0.2feet downward. However, distribution also models the uncertainty other 
+offsets. </p>
+
+<h2>
+<a id="formalisms-of-the-mdn" class="anchor" href="#formalisms-of-the-mdn" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Formalisms of the MDN</h2>
+
+<p>We approximate this distribution with a mixture of Gaussian distributuions. Gaussians are defined by their mean and covariance matrix. This makes them suitable for the task.
+Every timestep, the LSTM outputs parameters that define this Gaussian. Every Gaussian requires seven parameters</p>
+
+<ul>
+<li>mean and variance in x</li>
+<li>mean and variance in y</li>
+<li>mean and variance in z</li>
+<li>covariance in xy plane
+Say you model your offsets with <strong>K</strong> mixtures, you need <strong>7K</strong> paramaters.</li>
+</ul>
+
+<h2>
+<a id="how-do-you-train-an-mdn" class="anchor" href="#how-do-you-train-an-mdn" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How do you train an MDN?</h2>
+
+<p>The MDN defines a distribution over coordinates for the offset. The distribution explains or models our data. Hence, the best MDN has the highest likelihood under our data. To maximize the likelihood function is also to minimize the log-likelihood function. Hence, these lines in the code summarize the training.</p>
+
+<div class="highlight highlight-source-python"><pre>loss <span class="pl-k">=</span> <span class="pl-k">-</span>tf.log(pd)  <span class="pl-c">#pd is the probability density for the predicted offset</span>
+cost <span class="pl-k">=</span> tf.reduce_mean(loss_seq)
+<span class="pl-c1">...</span>
+train_step <span class="pl-k">=</span> optimizer.minimize(cost)  </pre></div>
+
+<h2>
+<a id="experiments-and-results-1" class="anchor" href="#experiments-and-results-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Experiments and results</h2>
+
+<p>This section contains many visualizations. The MDN parametrizes a distribution over the three-dimensional space. Therefore, the visualizations marginalize this distribution
+to obtain a plot in XY plane, XZ plane and YZ plane. 
+The following figure shows an example
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/MDN_plots_works1.png?raw=true" alt="Example MDN 1"></p>
+
+<ul>
+<li>Left upper plot: This plot shows the trajectory. The blue dot indicates which time step is being visualized</li>
+<li>Right upper plot: The trajectory goes in negative x direction and positive y direction. Indeed, the probability for this direction is high</li>
+<li>Left lower plot: The trajectory very probably goes downward in heigh (z coordinate) and forward (negative x coordinate)</li>
+<li>Right lower plot: The trajectory goes downward in height and in positive y direction
+Another example of a trajectory in the upward part
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/MDN_plots_works4_upwards.png?raw=true" alt="Example MDN 2">
+</li>
+</ul>
+
+<h1>
+<a id="sampling-and-biased-sampling" class="anchor" href="#sampling-and-biased-sampling" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Sampling and biased sampling</h1>
+
+<h2>
+<a id="sampling" class="anchor" href="#sampling" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Sampling</h2>
+
+<p>Now a natural question to ask is
+<strong>Can we sample new trajectories from the MDN?</strong>
+That answer is also <strong>yes</strong>.</p>
+
+<p>Every time-step has a distribution for the offset to the next time-step. In the previous section we visualized this to learn about the trajectory. Another option
+is to sample from this distribution. If done for consequetive time steps, we can <em>generate</em> the full trajectory.</p>
+
+<p>Two examples of these sampled trajectories are shown below
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/generate_sequences_4_bias-0.png?raw=true" alt="Example sampling 1">
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/generate_sequences_2.png?raw=true" alt="Example sampling 2"></p>
+
+<h2>
+<a id="biased-sampling" class="anchor" href="#biased-sampling" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Biased sampling</h2>
+
+<p>One problem with this sampling method is that errors add up. The LSTM bases its predictions on past time-steps. Therefore, the LSTM bases on the previous
+draw from the dsitribution. That way, unfortunate draws propagate their error. </p>
+
+<p>A simple heuristic can improve this results. The sampling can be biased toward more probable predictions. In the first image, probable offsets in the z-plane
+range from -0.1 to -0.6 feet. An unfortunate draw at, say, -0.6 feet will influence the remaining trajectory, like above. A <em>biased sample</em> is a sample more close
+to the mode of the distribution. For example, we not draw from the Gaussian between -0.1 and -0.6, but from a biased distribution between -0.3 and -0.4.
+The sampled trajectories resemble more a true trajectory.</p>
+
+<p>To illustrate this, the following figures show consequetively a sample with bias at 0.0, 1.0 and 2.0.
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/generate_sequences_4_bias-0.png?raw=true" alt="bias = 0">
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/generate_sequences_4_bias-1.png?raw=true" alt="bias = 1">
+<img src="https://github.com/RobRomijnders/MDN/blob/master/image/generate_sequences_4_bias-2.png?raw=true" alt="bias = 2">
+The first five samples in each trajectory are the true coordinates. From time-step 5, the blue lines are the sampled trajectories. The red line is the trajectory that corresponds to the initial 5 coordinates and is shown for reference.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/RobRomijnders">RobRomijnders</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
