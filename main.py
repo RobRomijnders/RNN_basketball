@@ -54,7 +54,7 @@ dropout = 0.6                    #Dropout rate in the fully connected layer
 
 """Load the data"""
 #The name of the dataset. Note that it must end with '.csv'
-csv_file = 'seq_all_9feet.csv'
+csv_file = 'seq_all.csv'
 #Load an instance
 center = np.array([5.25, 25.0, 10.0])   #Center of the basket for the dataset
 dl = DataLoad(direc,csv_file, center)
