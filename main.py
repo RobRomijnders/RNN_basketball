@@ -11,13 +11,10 @@ import sys
 import socket
 
 if 'rob-laptop' in socket.gethostname():
-  sys.path.append('/home/rob/Dropbox/ml_projects/MDN/')
   #The folder where your dataset is. Note that is must end with a '/'
   direc = '/home/rob/Dropbox/ml_projects/MDN/data/'
 elif 'rob-com' in socket.gethostname():
   # Add your own folders here
-  sys.path.append('/home/rob/Documents/nn_sportvu')
-  sys.path.append('/home/rob/Documents/nn_sportvu/MDN')
   direc = '/home/rob/Documents/nn_sportvu/SportVU-seq/'
 
 import numpy as np
@@ -31,7 +28,7 @@ import sklearn as sk
 from dataloader import *
 from model import *
 
-
+plot = False                     #Set True if you wish plots and visualizations
 
 """Hyperparameters"""
 config = {}
@@ -65,7 +62,8 @@ dl.munge_data(11,sl,db)
 dl.center_data(center)
 dl.split_train_test(ratio = 0.8)
 data_dict = dl.data
-dl.plot_traj_2d(20,'at %.0f feet from basket'%db)
+if plot:
+  dl.plot_traj_2d(20,'at %.0f feet from basket'%db)
 
 X_train = np.transpose(data_dict['X_train'],[0,2,1])
 y_train = data_dict['y_train']
@@ -158,53 +156,48 @@ if True:
   result = sess.run([model.accuracy,model.numel], feed_dict={ model.x: X_val[batch_ind_val], model.y_: y_val[batch_ind_val], model.keep_prob: 1.0})
   acc_test = result[0]
   print('The network has %s trainable parameters'%(result[1]))
+if plot:
+  """Sample from the MDN"""
+  if MDN:
+    val_dict = { model.x: X_val[batch_ind_val], model.y_: y_val[batch_ind_val], model.keep_prob: 1.0}
+    batch = X_val[batch_ind_val]
+    plot_traj_MDN_mult(model,sess,val_dict,batch)
 
-"""Sample from the MDN"""
-if MDN:
-  val_dict = { model.x: X_val[batch_ind_val], model.y_: y_val[batch_ind_val], model.keep_prob: 1.0}
-  batch = X_val[batch_ind_val]
-  plot_traj_MDN_mult(model,sess,val_dict,batch)
+    sl_pre = 5  # the number of true sequences you feed
+    seq_pre = X_val[3]
+    seq_samp = model.sample(sess,seq_pre,sl_pre,bias=2.0)
 
-  sl_pre = 5  # the number of true sequences you feed
-  seq_pre = X_val[3]
-  seq_samp = model.sample(sess,seq_pre,sl_pre,bias=2.0)
-
-"""Plot the performances"""
-plt.figure()
-plt.plot(perf_collect[0],label= 'Train accuracy')
-plt.plot(perf_collect[2],label = 'Valid accuracy')
-plt.legend()
-plt.show()
-
-
-plt.figure()
-plt.plot(perf_collect[1],label= 'Train class cost')
-plt.plot(perf_collect[3],label = 'Valid class cost')
-if MDN:
-  plt.plot(perf_collect[4],label= 'Train seq cost')
-  plt.plot(perf_collect[5],label = 'Valid seq cost')
-plt.legend()
-plt.show()
-
-"""Ecport to Shiny for visualization"""
-export_shiny=False
-export_lab = []   #The logs to export containing the sl_pre and bias
-if export_shiny:
-  block = 0
-  seq_exp = seq_pre.copy()
-  for pre in np.arange(5,10):
-    for b in np.arange(0,4,0.5):
-      seq_samp = model.sample(sess,seq_pre,pre,b)
-      seq_exp = np.concatenate((seq_exp,seq_samp),axis=0)
-      block += 1
-      print('Block %.0f has sl_pre %.0f and bias %.3f'%(block,pre,b))
-      export_lab.append(np.array([block,pre,b]))
-      plt.close('all')
-  np.savetxt(direc+'traj_shiny.csv',seq_exp,delimiter=',')
-  export_lab = np.stack(export_lab,axis=1).T    #
-  np.savetxt(direc+'traj_shiny_log.csv',export_lab,delimiter=',')
+  """Plot the performances"""
+  plt.figure()
+  plt.plot(perf_collect[0],label= 'Train accuracy')
+  plt.plot(perf_collect[2],label = 'Valid accuracy')
+  plt.legend()
+  plt.show()
 
 
+  plt.figure()
+  plt.plot(perf_collect[1],label= 'Train class cost')
+  plt.plot(perf_collect[3],label = 'Valid class cost')
+  if MDN:
+    plt.plot(perf_collect[4],label= 'Train seq cost')
+    plt.plot(perf_collect[5],label = 'Valid seq cost')
+  plt.legend()
+  plt.show()
 
-# We can now open TensorBoard. Run the following line from your terminal
-# tensorboard --logdir=/home/rob/Dropbox/ml_projects/basket_local/nn_sportvu/log_tb
+  """Export to Shiny for visualization"""
+  export_shiny=False
+  export_lab = []   #The logs to export containing the sl_pre and bias
+  if export_shiny:
+    block = 0
+    seq_exp = seq_pre.copy()
+    for pre in np.arange(5,10):
+      for b in np.arange(0,4,0.5):
+        seq_samp = model.sample(sess,seq_pre,pre,b)
+        seq_exp = np.concatenate((seq_exp,seq_samp),axis=0)
+        block += 1
+        print('Block %.0f has sl_pre %.0f and bias %.3f'%(block,pre,b))
+        export_lab.append(np.array([block,pre,b]))
+        plt.close('all')
+    np.savetxt(direc+'traj_shiny.csv',seq_exp,delimiter=',')
+    export_lab = np.stack(export_lab,axis=1).T    #
+    np.savetxt(direc+'traj_shiny_log.csv',export_lab,delimiter=',')
