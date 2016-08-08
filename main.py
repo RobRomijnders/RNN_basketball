@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 22 10:43:29 2016
+This code comes with the paper
+"Applying Deep Learning to Basketball Trajectories"
+By Rajiv Shah and Rob Romijnders
 
-@author: Rob Romijnders
+Reach us at
+rshah@pobox.com
+romijndersrob@gmail.com
 
-TODO
-- Cross validate over different learning-rates
+
+MAKE SURE to unpack your data and set the "direc" variable to
+the directory where your data is stored.
+
 """
 import sys
 import socket
