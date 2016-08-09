@@ -51,7 +51,7 @@ plot_every = 100                 #How often do you want terminal output for the 
 max_iterations = 20000             #Maximum number of training iterations
 dropout = 0.7                    #Dropout rate in the fully connected layer
 
-db = 4                            #distance to basket to stop trajectories
+db = 5                            #distance to basket to stop trajectories
 
 
 """Load the data"""
@@ -147,7 +147,7 @@ if True:
         auc_ma = np.mean(perf_collect[6,:step+1])
 
       if auc_best < auc_ma: auc_best = auc_ma
-      if auc_ma < 0.9*auc_best: early_stop = True
+#      if auc_ma < 0.9*auc_best: early_stop = True
       #Write information to TensorBoard
       summary_str = result[2]
 #      writer.add_summary(summary_str, i)
