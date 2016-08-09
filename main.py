@@ -16,13 +16,12 @@ the directory where your data is stored.
 import sys
 import socket
 
-if 'rob-laptop' in socket.gethostname():
-  #The folder where your dataset is. Note that is must end with a '/'
-  direc = '/home/rob/Dropbox/ml_projects/MDN/data/'
-elif 'rob-com' in socket.gethostname():
-  # Add your own folders here
-  direc = '/home/rob/Documents/nn_sportvu/SportVU-seq/'
+#The folder where your dataset is. Note that is must end with a '/'
+direc = 'data/'
 
+plot = False                     #Set True if you wish plots and visualizations
+
+from sklearn import metrics
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -30,29 +29,29 @@ from tensorflow.python.framework import ops
 from tensorflow.python.ops import clip_ops
 from util_basket import *
 from util_MDN import *
-import sklearn as sk
+import sklearn
 from dataloader import *
 from model import *
 
-plot = False                     #Set True if you wish plots and visualizations
 
 """Hyperparameters"""
 config = {}
 config['MDN'] = MDN = True       #Set to falso for only the classification network
 config['num_layers'] = 2         #Number of layers for the LSTM
-config['hidden_size'] = 180      #Hidden size of the LSTM
+config['hidden_size'] = 64     #Hidden size of the LSTM
 config['max_grad_norm'] = 1      #Clip the gradients during training
 config['batch_size'] = batch_size = 64
-config['sl'] = sl = 22           #Sequence length to extract data
+config['sl'] = sl = 12           #Sequence length to extract data
 config['mixtures'] = 3           #Number of mixtures for the MDN
 config['learning_rate'] = .005   #Initial learning rate
 
 
 ratio = 0.8                      #Ratio for train-val split
 plot_every = 100                 #How often do you want terminal output for the performances
-max_iterations = 500             #Maximum number of training iterations
-dropout = 0.6                    #Dropout rate in the fully connected layer
+max_iterations = 20000             #Maximum number of training iterations
+dropout = 0.7                    #Dropout rate in the fully connected layer
 
+db = 4                            #distance to basket to stop trajectories
 
 
 """Load the data"""
@@ -62,7 +61,7 @@ csv_file = 'seq_all.csv'
 center = np.array([5.25, 25.0, 10.0])   #Center of the basket for the dataset
 dl = DataLoad(direc,csv_file, center)
 #Munge the data. Arguments see the class
-db = 4                            #distance to basket to stop trajectories
+
 dl.munge_data(11,sl,db)
 #Center the data
 dl.center_data(center)
@@ -97,7 +96,7 @@ auc_ma = 0.0
 auc_best = 0.0
 
 if True:
-  writer = tf.train.SummaryWriter("/home/rob/Dropbox/ml_projects/MDN/log_tb", sess.graph)
+#  writer = tf.train.SummaryWriter("/home/rob/Dropbox/ml_projects/MDN/log_tb", sess.graph)
 
   sess.run(tf.initialize_all_variables())
 
@@ -139,9 +138,9 @@ if True:
       #Perform early stopping according to AUC score on validation set
       sm_out = result[3]
       #Pick of the column in sm_out is arbitrary. If you see consistently AUC's under 0.5, then switch columns
-      AUC = sk.metrics.roc_auc_score(y_val[batch_ind_val],sm_out[:,1])
+      AUC = sklearn.metrics.roc_auc_score(y_val[batch_ind_val],sm_out[:,1])
       perf_collect[6,step] = AUC
-      ma_range = 10
+      ma_range = 5 #How many iterations to average over for AUCS
       if step > ma_range:
         auc_ma = np.mean(perf_collect[6,step-ma_range+1:step+1])
       elif step > 1 and step <= ma_range:
@@ -151,8 +150,8 @@ if True:
       if auc_ma < 0.9*auc_best: early_stop = True
       #Write information to TensorBoard
       summary_str = result[2]
-      writer.add_summary(summary_str, i)
-      writer.flush()
+#      writer.add_summary(summary_str, i)
+#      writer.flush()
       print("At %6s / %6s val acc %5.3f and AUC is %5.3f(%5.3f) trainloss %5.3f / %5.3f(%5.3f)" % (i,max_iterations, acc, AUC,auc_ma,cost_train,cost_train_seq,cost_val_seq ))
       step +=1
     sess.run(model.train_step,feed_dict={model.x:X_train[batch_ind], model.y_: y_train[batch_ind], model.keep_prob: dropout})
