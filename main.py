@@ -13,8 +13,6 @@ MAKE SURE to unpack your data and set the "direc" variable to
 the directory where your data is stored.
 
 """
-import sys
-import socket
 
 #The folder where your dataset is. Note that is must end with a '/'
 direc = 'data/'
@@ -147,7 +145,7 @@ if True:
         auc_ma = np.mean(perf_collect[6,:step+1])
 
       if auc_best < auc_ma: auc_best = auc_ma
-#      if auc_ma < 0.9*auc_best: early_stop = True
+      if auc_ma < 0.8*auc_best: early_stop = True
       #Write information to TensorBoard
       summary_str = result[2]
 #      writer.add_summary(summary_str, i)

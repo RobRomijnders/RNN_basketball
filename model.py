@@ -135,13 +135,13 @@ class Model():
       #  - Histogram of the gradient over the Tensor
       #  - Histogram of the grradient-norm over the Tensor
       self.numel = tf.constant([[0]])
-#      for gradient, variable in gradients:
-#        if isinstance(gradient, ops.IndexedSlices):
-#          grad_values = gradient.values
-#        else:
-#          grad_values = gradient
-#
-#        self.numel +=tf.reduce_sum(tf.size(variable))
+      for gradient, variable in gradients:
+        if isinstance(gradient, ops.IndexedSlices):
+          grad_values = gradient.values
+        else:
+          grad_values = gradient
+
+        self.numel +=tf.reduce_sum(tf.size(variable))
 #
 #        h1 = tf.histogram_summary(variable.name, variable)
 #        h2 = tf.histogram_summary(variable.name + "/gradients", grad_values)
