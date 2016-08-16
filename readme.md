@@ -1,6 +1,6 @@
 # LSTM with MDN for basketball trajectories
 
-This is the code repository for our paper, [Applying Deep Learning to Basketball Trajectories](http://www.large-scale-sports-analytics.org/Large-Scale-Sports-Analytics/Submissions_files/paperID07.pdf). We also have written a short interactive [summary of the paper](http://tinyurl.com/traj-rnn).  
+This is the code repository for our paper, [Applying Deep Learning to Basketball Trajectories](http://www.large-scale-sports-analytics.org/Large-Scale-Sports-Analytics/Submissions_files/paperID07.pdf). We also have written a short interactive [summary of the paper](http://tinyurl.com/traj-rnn) or find the full paper on [arXiv](https://arxiv.org/abs/1608.03793).  
 
 This repo contains the data and tensorflow models we used in the paper. To run this code, it is necessary to have installed:  
 - Tensorflow > 0.8
