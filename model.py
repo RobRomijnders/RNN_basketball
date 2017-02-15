@@ -98,7 +98,7 @@ class Model():
       max_theta = tf.reduce_max(self.theta, 1, keep_dims=True)
       self.theta = tf.sub(self.theta, max_theta)
       self.theta = tf.exp(self.theta)
-      normalize_theta = tf.reduce_sum(self.theta, 1, keep_dims=True)
+      normalize_theta = tf.reciprocal(tf.reduce_sum(self.theta, 1, keep_dims=True))
       self.theta = tf.mul(normalize_theta, self.theta)
 
       #Deviances are non-negative and tho between -1 and 1
