@@ -34,7 +34,7 @@ from model import *
 
 """Hyperparameters"""
 config = {}
-config['MDN'] = MDN = True       #Set to falso for only the classification network
+config['MDN'] = MDN = False       #Set to falso for only the classification network
 config['num_layers'] = 2         #Number of layers for the LSTM
 config['hidden_size'] = 64     #Hidden size of the LSTM
 config['max_grad_norm'] = 1      #Clip the gradients during training
@@ -144,13 +144,15 @@ if True:
       elif step > 1 and step <= ma_range:
         auc_ma = np.mean(perf_collect[6,:step+1])
 
-      if auc_best < auc_ma: auc_best = auc_ma
-      if auc_ma < 0.8*auc_best: early_stop = True
+      if auc_best < AUC: auc_best = AUC
+      # if auc_ma < 0.8*auc_best: early_stop = True
       #Write information to TensorBoard
       summary_str = result[2]
 #      writer.add_summary(summary_str, i)
 #      writer.flush()
       print("At %6s / %6s val acc %5.3f and AUC is %5.3f(%5.3f) trainloss %5.3f / %5.3f(%5.3f)" % (i,max_iterations, acc, AUC,auc_ma,cost_train,cost_train_seq,cost_val_seq ))
+      print "At {}, the training cost is {}, the valid cost is {}".format(i, perf_collect[1,step], perf_collect[3,step])
+      print("The best AUC is %6s")%auc_best
       step +=1
     sess.run(model.train_step,feed_dict={model.x:X_train[batch_ind], model.y_: y_train[batch_ind], model.keep_prob: dropout})
     i += 1
