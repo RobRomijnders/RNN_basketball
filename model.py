@@ -43,22 +43,24 @@ class Model():
     self.y_ = tf.placeholder(tf.int64, shape=[batch_size], name='Ground_truth')
     self.keep_prob = tf.placeholder("float")
     with tf.name_scope("LSTM") as scope:
-      cell = tf.nn.rnn_cell.LSTMCell(hidden_size, use_peepholes=True)
-      cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
-      cell = tf.nn.rnn_cell.DropoutWrapper(
+      cell = tf.contrib.rnn.LSTMCell(hidden_size, use_peepholes=True)
+      cell = tf.contrib.rnn.MultiRNNCell([cell] * num_layers)
+      cell = tf.contrib.rnn.DropoutWrapper(
           cell, output_keep_prob=self.keep_prob)
 
       # Initial state
       initial_state = cell.zero_state(batch_size, tf.float32)
 
-      inputs = tf.unpack(self.x, axis=2)
+      inputs = tf.unstack(self.x, axis=2)
       # outputs, _ = tf.nn.rnn(cell, inputs, dtype=tf.float32)
-      outputs, _ = tf.nn.rnn(cell, inputs, initial_state=initial_state)
-      
+      outputs, _ = tf.contrib.rnn.static_rnn(cell, inputs, dtype=tf.float32)
+
+
       # outputs = []
       # self.states = []
       # state = initial_state
       # for time_step in range(sl):
+
       #   if time_step > 0: tf.get_variable_scope().reuse_variables()
       #   (cell_output, state) = cell(self.x[:, :, time_step], state)
       #   outputs.append(cell_output)
@@ -73,9 +75,9 @@ class Model():
       b_c = tf.Variable(tf.constant(0.1, shape=[2]))
       self.h_c = tf.matmul(final, W_c) + b_c
 
-      loss = tf.nn.sparse_softmax_cross_entropy_with_logits(self.h_c, self.y_)
+      loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.h_c, labels=self.y_)
       self.cost = tf.reduce_mean(loss)
-      loss_summ = tf.scalar_summary("cross entropy_loss", self.cost)
+      loss_summ = tf.summary.scalar("cross entropy_loss", self.cost)
     with tf.name_scope("Output_MDN") as scope:
       params = 8  # 7+theta
       # Two for distribution over hit&miss, params for distribution parameters
@@ -85,7 +87,8 @@ class Model():
       b_o = tf.Variable(tf.constant(0.5, shape=[output_units]))
       # For comparison with XYZ, only up to last time_step
       # --> because for final time_step you cannot make a prediction
-      outputs_tensor = tf.concat(0, outputs[:-1])
+      output = outputs[:-1]
+      outputs_tensor = tf.concat(output, axis=0)
       # is of size [batch_size*seq_len by output_units]
       h_out_tensor = tf.nn.xw_plus_b(outputs_tensor, W_o, b_o)
 
@@ -97,19 +100,18 @@ class Model():
       h_xyz = tf.transpose(h_xyz, [1, 2, 0])
       # x_next = tf.slice(x,[0,0,1],[batch_size,3,sl-1])  #in size [batch_size,
       # output_units, sl-1]
-      x_next = tf.sub(self.x[:, :3, 1:], self.x[:, :3, :sl - 1])
+      x_next = tf.subtract(self.x[:, :3, 1:], self.x[:, :3, :sl - 1])
       # From here any, many variables have size [batch_size, mixtures, sl-1]
-      xn1, xn2, xn3 = tf.split(1, 3, x_next)
-      self.mu1, self.mu2, self.mu3, self.s1, self.s2, self.s3, self.rho, self.theta = tf.split(
-          1, params, h_xyz)
+      xn1, xn2, xn3 = tf.split(value=x_next, num_or_size_splits=3, axis=1)
+      self.mu1, self.mu2, self.mu3, self.s1, self.s2, self.s3, self.rho, self.theta = tf.split(value=h_xyz, num_or_size_splits=params, axis=1)
 
       # make the theta mixtures
       # softmax all the theta's:
       max_theta = tf.reduce_max(self.theta, 1, keep_dims=True)
-      self.theta = tf.sub(self.theta, max_theta)
+      self.theta = tf.subtract(self.theta, max_theta)
       self.theta = tf.exp(self.theta)
-      normalize_theta = tf.inv(tf.reduce_sum(self.theta, 1, keep_dims=True))
-      self.theta = tf.mul(normalize_theta, self.theta)
+      normalize_theta = tf.reciprocal(tf.reduce_sum(self.theta, 1, keep_dims=True))
+      self.theta = tf.multiply(normalize_theta, self.theta)
 
       # Deviances are non-negative and tho between -1 and 1
       self.s1 = tf.exp(self.s1)
@@ -121,10 +123,10 @@ class Model():
       px1x2 = tf_2d_normal(xn1, xn2, self.mu1, self.mu2,
                            self.s1, self.s2, self.rho)
       px3 = tf_1d_normal(xn3, self.mu3, self.s3)
-      px1x2x3 = tf.mul(px1x2, px3)
+      px1x2x3 = tf.multiply(px1x2, px3)
 
       # Sum along the mixtures in dimension 1
-      px1x2x3_mixed = tf.reduce_sum(tf.mul(px1x2x3, self.theta), 1)
+      px1x2x3_mixed = tf.reduce_sum(tf.multiply(px1x2x3, self.theta), 1)
       print('You are using %.0f mixtures' % mixtures)
       # at the beginning, some errors are exactly zero.
       loss_seq = -tf.log(tf.maximum(px1x2x3_mixed, 1e-20))
@@ -168,10 +170,10 @@ class Model():
     with tf.name_scope("Evaluating_accuracy") as scope:
       correct_prediction = tf.equal(tf.argmax(self.h_c, 1), self.y_)
       self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-      accuracy_summary = tf.scalar_summary("accuracy", self.accuracy)
+      accuracy_summary = tf.summary.scalar("accuracy", self.accuracy)
 
     # Define one op to call all summaries
-    self.merged = tf.merge_all_summaries()
+    self.merged = tf.summary.merge_all()
 
   def sample(self, sess, seq, sl_pre=4, bias=0):
     """Continually samples from the MDN. The frist "sl_pre" samples

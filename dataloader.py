@@ -67,7 +67,7 @@ class DataLoad():
     if height < 9.0: 'Please note that height is measured from ground.'
     height = float(height)
     ##Import data
-    df = pd.read_csv(self.csv_loc).sort(['id','game_clock'], ascending=[1,0])
+    df = pd.read_csv(self.csv_loc).sort_values(by=['id','game_clock'], ascending=[1,0])
     if verbose:
       print('The shape of the read data is ',df.shape)
       ##To plot a single shot
