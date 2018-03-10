@@ -12,6 +12,11 @@ import matplotlib.pyplot as plt
 
 
 #  Extracts form the implementation by https://github.com/hardmaru/write-rnn-tensorflow
+def lstm_cell(lstm_size, keep_prob):
+  lstm = tf.nn.rnn_cell.BasicLSTMCell(lstm_size)
+  drop = tf.nn.rnn_cell.DropoutWrapper(lstm, output_keep_prob=keep_prob)
+  return drop
+
 
 def tf_2d_normal(x1, x2, mu1, mu2, s1, s2, rho):
   """ 2D normal distribution

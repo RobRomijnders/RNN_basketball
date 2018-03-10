@@ -38,36 +38,17 @@ class Model():
     self.batch_size = batch_size
 
     # Nodes for the input variables
-    self.x = tf.placeholder(
-        "float", shape=[batch_size, crd, sl], name='Input_data')
+    self.x = tf.placeholder(dtype=tf.float32, shape=[batch_size, crd, sl], name='Input_data')
     self.y_ = tf.placeholder(tf.int64, shape=[batch_size], name='Ground_truth')
     self.keep_prob = tf.placeholder("float")
     with tf.name_scope("LSTM") as scope:
-      cell = tf.contrib.rnn.LSTMCell(hidden_size, use_peepholes=True)
-      cell = tf.contrib.rnn.MultiRNNCell([cell] * num_layers)
-      cell = tf.contrib.rnn.DropoutWrapper(
-          cell, output_keep_prob=self.keep_prob)
-
-      # Initial state
-      initial_state = cell.zero_state(batch_size, tf.float32)
+      cell = tf.nn.rnn_cell.MultiRNNCell([
+        lstm_cell(hidden_size, self.keep_prob) for _ in range(num_layers)
+      ])
 
       inputs = tf.unstack(self.x, axis=2)
       # outputs, _ = tf.nn.rnn(cell, inputs, dtype=tf.float32)
       outputs, _ = tf.contrib.rnn.static_rnn(cell, inputs, dtype=tf.float32)
-
-
-      # outputs = []
-      # self.states = []
-      # state = initial_state
-      # for time_step in range(sl):
-
-      #   if time_step > 0: tf.get_variable_scope().reuse_variables()
-      #   (cell_output, state) = cell(self.x[:, :, time_step], state)
-      #   outputs.append(cell_output)
-      #   self.states.append(state)
-      # self.final_state = state
-      # outputs is now a list of length seq_len with tensors [ batch_size by
-      # hidden_size ]
 
     with tf.name_scope("SoftMax") as scope:
       final = outputs[-1]
@@ -78,6 +59,7 @@ class Model():
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.h_c, labels=self.y_)
       self.cost = tf.reduce_mean(loss)
       loss_summ = tf.summary.scalar("cross entropy_loss", self.cost)
+
     with tf.name_scope("Output_MDN") as scope:
       params = 8  # 7+theta
       # Two for distribution over hit&miss, params for distribution parameters
