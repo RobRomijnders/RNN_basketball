@@ -2,3 +2,5 @@
 *.rob-laptop
 *.csv
 !seq_all.csv.tar.gz
+.idea/**
+**/venv/**

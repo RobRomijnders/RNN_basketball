@@ -182,10 +182,10 @@ if plot:
 
   plt.figure()
   plt.plot(perf_collect[1],label= 'Train class cost')
-  plt.plot(perf_collect[3],label = 'Valid class cost')
+  plt.plot(perf_collect[3],label='Valid class cost')
   if MDN:
-    plt.plot(perf_collect[4],label= 'Train seq cost')
-    plt.plot(perf_collect[5],label = 'Valid seq cost')
+    plt.plot(perf_collect[4], label='Train seq cost')
+    plt.plot(perf_collect[5],label='Valid seq cost')
   plt.legend()
   plt.show()
 
